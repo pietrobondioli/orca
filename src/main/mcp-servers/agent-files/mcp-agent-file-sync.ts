@@ -3,7 +3,7 @@
 // agent), and takes them back out when the server goes, is turned off for the agent, or the consent
 // is withdrawn. Entries another Orca or the user owns are never touched. With the switch off, nothing
 // is written; entries left from before answer as servers with no tools.
-import { mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { getAppEnvironment } from '../../../shared/app-lifecycle/app-environment'
@@ -12,6 +12,7 @@ import { MCP_FILE_AGENTS, type McpFileAgent } from '../../../shared/mcp-servers/
 import { thisAppOrcaCliLauncher } from '../../cli/launchers/this-app-orca-cli-launcher'
 import {
   readAgentConfigText,
+  removeAgentConfigIfUnchanged,
   writeAgentConfigIfUnchanged
 } from '../agent-configs/agent-config-file-write'
 import {
@@ -233,11 +234,8 @@ async function publish(
     }
   }
   if (next === null) {
-    if ((await readAgentConfigText(path)) !== current) {
-      return false
-    }
-    await rm(path, { force: true })
-    return true
+    // A save that lands between the check and the delete is kept, never deleted.
+    return await removeAgentConfigIfUnchanged(path, current)
   }
   return await writeAgentConfigIfUnchanged(path, next, current)
 }

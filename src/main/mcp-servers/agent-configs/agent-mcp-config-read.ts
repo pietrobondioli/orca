@@ -1,7 +1,6 @@
 // Read-only: the MCP servers each agent loads from its own config, and the "In your agents" list
 // that merges them across agents by name and URL or command.
 import { createHash } from 'node:crypto'
-import { readFile } from 'node:fs/promises'
 import { parse as parseJsonc, type ParseError } from 'jsonc-parser'
 import { parse as parseToml } from 'smol-toml'
 import {
@@ -11,7 +10,6 @@ import {
   type AgentMcpConfigEntry
 } from '../../../shared/mcp/agent-mcp-config-entry'
 import type { BotToolServer } from '../../../shared/bot-tools'
-import { isDefinitiveAbsence } from '../../../shared/errors/definitive-filesystem-absence'
 import {
   MCP_CONFIG_AGENTS,
   agentMcpConfigLocations,
@@ -20,6 +18,7 @@ import {
   type AgentMcpConfigLocation,
   type McpConfigAgent
 } from './agent-mcp-config-locations'
+import { readAgentConfigText } from './agent-config-file-write'
 
 export type AgentMcpConfigSource = AgentMcpConfigLocation & {
   /** The key path of the entry itself in the file. */
@@ -108,11 +107,13 @@ async function readLocation(
 ): Promise<AgentMcpConfigServer[]> {
   let text: string
   try {
-    text = await readFile(location.path, 'utf8')
-  } catch (error) {
-    if (!isDefinitiveAbsence(error)) {
-      console.warn(`[mcp-servers] Couldn't read ${location.path}:`, error)
+    const read = await readAgentConfigText(location.path)
+    if (read === null) {
+      return []
     }
+    text = read
+  } catch (error) {
+    console.warn(`[mcp-servers] Couldn't read ${location.path}:`, error)
     return []
   }
   const servers = agentMcpConfigServersIn(location, text, skipProject, withOrcaOwned)
@@ -154,7 +155,7 @@ export async function readAgentMcpServerNames(
   const locations = await agentMcpConfigLocations(agent, context, options.projectPath)
   const read = await Promise.all(
     locations.map(async (location) => {
-      const text = await readFile(location.path, 'utf8').catch(() => null)
+      const text = await readAgentConfigText(location.path).catch(() => null)
       const parsed = text === null ? null : parseAgentMcpConfigText(text, location.format)
       if (!parsed) {
         return []
