@@ -148,7 +148,7 @@ export class AcpStructuredSessionAdapter implements SessionAdapter {
             prompt,
             requestedAt: input.requestedAt ?? this.now()
           },
-          orchestrationMailNotice(input.body.from) !== null
+          input.body.from === undefined || orchestrationMailNotice(input.body.from) !== null
         )
       )
       await admitStructuredAgentSessionInput(input.admitFreshInput, commit)
