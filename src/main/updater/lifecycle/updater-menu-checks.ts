@@ -19,7 +19,7 @@ export abstract class UpdaterMenuChecks extends UpdaterScheduling {
     ) {
       return
     }
-    if (!app.isPackaged) {
+    if (!app.isPackaged || process.platform === 'linux') {
       this.sendStatus({ state: 'not-available', userInitiated: true })
       return
     }

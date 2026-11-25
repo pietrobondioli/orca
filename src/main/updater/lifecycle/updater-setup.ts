@@ -170,7 +170,8 @@ export class UpdaterSetup extends UpdaterDownloadInstall {
       this.sendErrorStatus(`The server update did not complete: ${serveHandoffFailure}`, true)
     }
 
-    if (!app.isPackaged) {
+    // The fork AppImage is pinned by Nix; its binary must not replace itself.
+    if (!app.isPackaged || process.platform === 'linux') {
       return
     }
 
